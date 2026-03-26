@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ProspectMap - Encontre Clientes sem Website</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-overlay">
+    <div class="login-card">
+      <div class="login-icon">&#128274;</div>
+      <h2>ProspectMap</h2>
+      <p class="login-subtitle">Acesso restrito. Digite sua senha.</p>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="login-input-group">
+          <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="login-btn">Entrar</button>
+        <p id="loginError" class="login-error" style="display:none">Senha incorreta.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="container" id="appContainer" style="display:none">
+    <header>
+      <h1>ProspectMap</h1>
+      <p class="subtitle">Encontre negócios sem website e ofereça seus serviços</p>
+      <button class="logout-btn" onclick="logout()">Sair</button>
+    </header>
+
+    <section class="search-section">
+      <div class="search-box">
+        <div class="input-group">
+          <label for="businessType">Tipo de Negócio</label>
+          <select id="businessType">
+            <option value="restaurante">Restaurante</option>
+            <option value="salão de beleza">Salão de Beleza</option>
+            <option value="oficina mecânica">Oficina Mecânica</option>
+            <option value="padaria">Padaria</option>
+            <option value="pet shop">Pet Shop</option>
+            <option value="academia">Academia</option>
+            <option value="clínica">Clínica</option>
+            <option value="dentista">Dentista</option>
+            <option value="loja de roupas">Loja de Roupas</option>
+            <option value="imobiliária">Imobiliária</option>
+            <option value="contabilidade">Contabilidade</option>
+            <option value="advogado">Advogado</option>
+            <option value="hotel">Hotel / Pousada</option>
+            <option value="farmácia">Farmácia</option>
+            <option value="mercado">Mercado / Mercearia</option>
+            <option value="custom">Personalizado...</option>
+          </select>
+        </div>
+        <div class="input-group" id="customTypeGroup" style="display:none">
+          <label for="customType">Tipo Personalizado</label>
+          <input type="text" id="customType" placeholder="Ex: floricultura, estúdio de tatuagem..." />
+        </div>
+        <div class="input-group">
+          <label for="searchMode">Modo de Busca</label>
+          <select id="searchMode">
+            <option value="city">Cidade específica</option>
+            <option value="country">País inteiro (principais cidades)</option>
+          </select>
+        </div>
+        <div class="input-group autocomplete-wrapper" id="cityGroup">
+          <label for="city">Cidade / Região</label>
+          <input type="text" id="city" placeholder="Comece a digitar... Ex: São Paulo" autocomplete="off" />
+          <div id="suggestions" class="suggestions-list"></div>
+        </div>
+        <div class="input-group autocomplete-wrapper" id="countryGroup" style="display:none">
+          <label for="country">País</label>
+          <input type="text" id="country" placeholder="Comece a digitar... Ex: Estados Unidos" autocomplete="off" />
+          <div id="countrySuggestions" class="suggestions-list"></div>
+        </div>
+        <button id="searchBtn" onclick="search()">Buscar Negócios</button>
+      </div>
+
+      <!-- Progresso da busca por país -->
+      <div id="countryProgress" class="country-progress" style="display:none">
+        <div class="progress-header">
+          <span id="progressText">Buscando...</span>
+          <button class="stop-btn" onclick="stopCountrySearch()">Parar Busca</button>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="progressDetail" class="progress-detail"></div>
+      </div>
+    </section>
+
+    <section class="filters-section" id="filtersSection" style="display:none">
+      <div class="stats">
+        <div class="stat-card total">
+          <span class="stat-number" id="totalCount">0</span>
+          <span class="stat-label">Total Encontrados</span>
+        </div>
+        <div class="stat-card no-site">
+          <span class="stat-number" id="noSiteCount">0</span>
+          <span class="stat-label">Sem Website</span>
+        </div>
+        <div class="stat-card with-site">
+          <span class="stat-number" id="withSiteCount">0</span>
+          <span class="stat-label">Com Website</span>
+        </div>
+        <div class="stat-card has-insta">
+          <span class="stat-number" id="instaCount">0</span>
+          <span class="stat-label">Com Instagram</span>
+        </div>
+        <div class="stat-card has-email">
+          <span class="stat-number" id="emailCount">0</span>
+          <span class="stat-label">Com Email</span>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="filterResults('all')">Todos</button>
+        <button class="filter-btn" onclick="filterResults('no-website')">Sem Website</button>
+        <button class="filter-btn" onclick="filterResults('with-website')">Com Website</button>
+        <button class="filter-btn" onclick="filterResults('has-instagram')">Com Instagram</button>
+        <button class="filter-btn" onclick="filterResults('has-email')">Com Email</button>
+        <button class="export-btn" onclick="exportCSV()">Exportar CSV</button>
+        <button class="batch-insta-btn" id="batchInstaBtn" onclick="findAllInstagrams()">Buscar Instagram de Todos</button>
+      </div>
+
+      <!-- Filtros Avançados -->
+      <div class="advanced-filters">
+        <div class="filter-group">
+          <label>Nota mínima: <span id="minRatingVal">Todas</span></label>
+          <input type="range" id="minRating" min="0" max="5" step="0.5" value="0" />
+        </div>
+        <div class="filter-group">
+          <label>Avaliações mín: <span id="minReviewsVal">Todas</span></label>
+          <input type="range" id="minReviews" min="0" max="200" step="5" value="0" />
+        </div>
+        <div class="filter-group">
+          <label>Score mínimo: <span id="minScoreVal">Todos</span></label>
+          <input type="range" id="minScore" min="0" max="100" step="5" value="0" />
+        </div>
+      </div>
+    </section>
+
+    <section class="results-section" id="resultsSection">
+      <div id="loading" class="loading" style="display:none">
+        <div class="spinner"></div>
+        <p>Buscando negócios... Isso pode levar 1-2 minutos (visitando cada lugar).</p>
+      </div>
+      <div id="error" class="error" style="display:none"></div>
+      <div id="results" class="results-grid"></div>
+    </section>
+
+    <div id="loadMoreSection" style="display:none; text-align:center; margin: 20px 0;">
+      <button class="load-more-btn" onclick="loadMore()">Carregar Mais Resultados</button>
+    </div>
+  </div>
+
+  <!-- Modal WhatsApp -->
+  <div id="whatsappModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Enviar WhatsApp para <span id="whatsappBusiness"></span></h3>
+        <button class="modal-close" onclick="closeWhatsAppModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-hint">Edite a mensagem antes de enviar:</p>
+        <textarea id="whatsappMessage" rows="12"></textarea>
+        <input type="hidden" id="whatsappPhone" />
+      </div>
+      <div class="modal-footer">
+        <button class="copy-msg-btn" onclick="copyWhatsAppMessage()">Copiar Texto</button>
+        <button class="send-whatsapp-btn" onclick="sendWhatsApp()">Enviar WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
